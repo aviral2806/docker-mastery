@@ -2,6 +2,8 @@
 
 This project demonstrates a containerized Spring Boot application. The application is packaged using Docker and automatically built and pushed to Docker Hub on every push to the `main` branch. The entire process is managed through a GitHub Actions workflow.
 
+(Done as part of dockermastery workshop by tdevs.in)
+
 ---
 
 ## Features
