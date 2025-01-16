@@ -1,104 +1,101 @@
-# Docker Mastery
+# Spring Boot Dockerized Application with GitHub Actions CI/CD
 
-This project is intented to use with exercises for Docker Mastery course by tdevs.in.
+This project demonstrates a containerized Spring Boot application. The application is packaged using Docker and automatically built and pushed to Docker Hub on every push to the `main` branch. The entire process is managed through a GitHub Actions workflow.
 
-## Environment Variables
+---
 
-This project uses below environment variables:
-```shell
-DB_URL #Example: jdbc:mysql://localhost:3306/dockermastery Syntax: jdbc:mysql://<hostname>:<port>/<db_name>
-DB_USERNAME # Username of databases Example: root
-DB_PASSWORD # Password of database Example: root12345
+## Features
+
+- A Spring Boot application containerized using Docker.
+- Continuous Integration and Deployment using GitHub Actions.
+- Automatic tagging of Docker images with the latest commit hash.
+- Docker images pushed to Docker Hub.
+- Multi stage build used for lightweight Docker image
+
+---
+
+## Technologies Used
+
+- **Spring Boot**: Backend framework for Java.
+- **Docker**: Containerization platform.
+- **GitHub Actions**: CI/CD pipeline.
+- **Docker Hub**: Container registry.
+
+---
+
+## Dockerfile
+
+The following `Dockerfile` is used to build and containerize the Spring Boot application:
+
+```dockerfile
+# Build Stage
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+COPY . /app
+WORKDIR /app
+RUN mvn clean package
+
+# Runtime Stage
+FROM eclipse-temurin:21-jre-alpine
+COPY --from=build /app/target/dockermastery-0.0.1-SNAPSHOT.jar /app/todoapp.jar
+WORKDIR /app
+
+EXPOSE 8080
+ENTRYPOINT ["java","-jar", "todoapp.jar"]
 ```
 
-Make sure your DB is up and running and an empty database is created.
+## Workflow File (`.github/workflows/cd.yaml`)
 
-For example, if you have a mysql instance running locally at port 3306, connect to it and create a new database schema using below command:
-```sql
-CREATE DATABASE dockermastery;
+GitHub Actions workflow for building and publishing Docker images
+
+```yaml
+name: Build and publish docker images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract git hash to tag image
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: aviral2806/todoapp:${{ env.commit_hash }}
 ```
 
-The DB URL will become `jdbc:mysql://localhost:3306/dockermastery`
+## How to Use
 
-## Build Steps
+i) Clone your repository
 
-This project uses JAVA 21 and Maven. Make sure you have that installed in the system.
-
-This project has an inbuilt Maven wrapper `mvnw` that can be used to build, test, and run the project.
-
-To Run this project, below command can be used:
-```shell
-./mvnw spring-boot:run
-```
-or
-```shell
-mvn spring-boot:run
+```bash
+git clone https://github.com/<your-username>/<your-repo>.git
 ```
 
-The Run will fail if above environment variables are not set. 
+ii) Configure your secrets in GitHub:
 
-You can pass these environment variables as below:
+`DOCKERHUB_USERNAME`: Your Docker Hub username.
 
-On linux/macOs
-```shell
-export DB_URL="jdbc:mysql://localhost:3306/dockermastery"
-export DB_USERNAME=root
-export DB_PASSWORD=root
+`DOCKERHUB_PASSWORD`: Your Docker Hub password.
+
+iii) Push changes to the main branch to trigger the workflow.
+
+- The Docker image will be built, tagged, and pushed to Docker Hub. The image will be available at:
+
+```bash
+<your-username>/<your-app-name>:<commit_hash>
 ```
-
-On Windows:
-```batch
-set DB_URL=jdbc:mysql://localhost:3306/dockermastery
-set DB_USERNAME=root
-set DB_PASSWORD=root
-```
-
-As the application starts, it creates a table called `todo` and add a few rows to it.
-The application runs at port `8080`
-
-Once the application is started, you can go to your browser and go to url `http://localhost:8080/`. This will return the following response on your browser:
-```json
-{
-  "todos": [
-    {
-      "id": 1,
-      "title": "Finish Assignment",
-      "description": "Complete the assignment on database management systems.",
-      "status": "pending"
-    },
-    {
-      "id": 2,
-      "title": "Grocery Shopping",
-      "description": "Buy milk, eggs, and bread from the supermarket.",
-      "status": "completed"
-    }
-  ]
-}
-```
-
-If you are getting this output, your application is running correctly.
-
-## Packaging
-
-Application can be compiled and packed in a jar using the below command:
-```shell
-./mvnw clean package
-```
-
-This command outputs the jar inside `target` folder with name `dockermastery-0.0.1-SNAPSHOT.jar`.
-
-To run this jar, you can use below command:
-
-```shell
-java -jar dockermastery-0.0.1-SNAPSHOT.jar
-```
-Make sure your environment variables are set before running this jar. 
-
-## Running tests
-
-This application contains unit tests that can be run by 
-```shell
-./mvnw test
-```
-
-Make sure all tests are passed before running the application.
